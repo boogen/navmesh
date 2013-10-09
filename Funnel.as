@@ -5,7 +5,8 @@ package {
         public var current:Vector2;
         public var left:Vector2;
         public var right:Vector2;
-        public var index:int = 0;
+        public var leftIndex:int;
+        public var rightIndex:int;
 
         public function Funnel() {
         }
@@ -23,52 +24,45 @@ package {
             last.right = new Vector2(finish.x, finish.y);
             portals.push(last);
 
-            index = 0;
             current = new Vector2(start.x, start.y);
-            setLR(portals[0].left, portals[0].right);
+            left = portals[0].left;
+            right = portals[0].right;
 
             var road:Vector.<Vector2> = new Vector.<Vector2>();
             road.push(new Vector2(start.x, start.y));
             
             for (var i:int = 1; i < portals.length; ++i) {
                 trace("check funnel ", i);
-                if (insideFunnel(current, portals[i])) {
-                    trace("inside");
-                    setLR(portals[i].left, portals[i].right);
-                    index = i;
+                if (insideFunnel(current, portals[i].left)) {
+                    left = portals[i].left;
+                    leftIndex = i;
                 }
-                else {
-                    var newleft:Vector2 = portals[i].left;
-                    var newright:Vector2 = portals[i].right;
-                    
-                    if (newleft.sub(current).cross(right.sub(current)) >= 0 && 
-                        newright.sub(current).cross(right.sub(current)) >= 0) {
-                        trace("on the left");
-                        var t:Vector2 = right.sub(left);
-                        t = t.mul(0.95);
-                        current = left.add(t);
-                        left = null;
-                        right = null;
-                        i = index;
-                        road.push(current);
-                        
-                    }
-                    else if (newleft.sub(current).cross(left.sub(current)) <= 0 && 
-                        newright.sub(current).cross(left.sub(current)) <= 0) {
-                        trace("on the right");
-                        var t:Vector2 = left.sub(right);
-                        t = t.mul(0.95);
-                        current = right.add(t);
-                        left = null;
-                        right = null;
-                        i = index;
-                        road.push(current);
-
-                    }
-                    else {
-                        trace("ignore");
-                    }
-
+                if (insideFunnel(current, portals[i].right)) {
+                    right = portals[i].right;
+                    rightIndex = i;
+                }
+                
+                if (right.sub(current).cross(portals[i].left.sub(current)) > 0) {
+                    i = Math.min(leftIndex, rightIndex);
+                    leftIndex = i;
+                    rightIndex = i;
+                    var t:Vector2 = right.sub(left);
+                    t = t.mul(0.95);
+                    current = left.add(t);
+                    left = null;
+                    right = null;
+                    road.push(current);
+                }
+                else if (left.sub(current).cross(portals[i].right.sub(current)) < 0) {
+                    i = Math.min(leftIndex, rightIndex);
+                    leftIndex = i;
+                    rightIndex = i;
+                    var t:Vector2 = left.sub(right);
+                    t = t.mul(0.95);
+                    current = right.add(t);
+                    left = null;
+                    right = null;
+                    road.push(current);
                 }
             }
             
@@ -81,25 +75,14 @@ package {
             var newx:Number = (portals[i - 1].left.x + portals[i - 1].right.x) / 2;
             var newy:Number = (portals[i - 1].left.y + portals[i - 1].right.y) / 2;
             current = new Vector2(newx, newy);
-            setLR(portals[i].left, portals[i].right);
+            left = portals[i].left;
+            right = portals[i].right;
             road.push(current);
 
         }
 
 
-
-        private function setLR(lhs:Vector2, rhs:Vector2):void {
-            left = lhs;
-            right = rhs;
-
-            if ( left.sub(current).cross(right.sub(current)) > 0 ) {
-                left = rhs;
-                right = lhs;
-            }
-            
-        }
-
-        private function insideFunnel(current:Vector2,  portal:Portal):Boolean {
+        private function insideFunnel(current:Vector2,  v:Vector2):Boolean {
             if (left == null || right == null) {
                 return true;
             }
@@ -107,17 +90,9 @@ package {
             var p1:Vector2 = left.sub(current);
             var p2:Vector2 = right.sub(current);
 
-            var v1:Vector2 = portal.left.sub(current);
-            var v2:Vector2 = portal.right.sub(current);
+            var v1:Vector2 = v.sub(current);
 
-
-            if (v1.cross(v2) > 0) {
-                var t:Vector2 = v1;
-                v1 = v2;
-                v2 = t;
-            }
-
-            if (p1.cross(v1) <= 0 && p2.cross(v1) >= 0 && p1.cross(v2) <= 0 && p2.cross(v2) >= 0) {
+            if (p1.cross(v1) >= 0 && p2.cross(v1) <= 0) {
                 return true;
             }
 

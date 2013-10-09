@@ -19,15 +19,11 @@ package {
             neighbors = new Vector.<Triangle>();
 
 
-            var p1:Point = new Point();
-            p1.x = points[indices[1]].x - points[indices[0]].x;
-            p1.y = points[indices[1]].y - points[indices[0]].y;
+            var p1:Vector2 = new Vector2(points[indices[1]].x - points[indices[0]].x, points[indices[1]].y - points[indices[0]].y);
 
-            var p2:Point = new Point();
-            p2.x = points[indices[2]].x - points[indices[1]].x;
-            p2.y - points[indices[2]].y - points[indices[1]].y;
+            var p2:Vector2 = new Vector2(points[indices[2]].x - points[indices[1]].x, points[indices[2]].y - points[indices[1]].y);
 
-            if (p1.x * p2.y - p1.y * p2.x < 0) {
+            if (p1.cross(p2) < 0) {
                 indices.reverse();
             }
         }
@@ -89,14 +85,12 @@ package {
             var portal:Portal = new Portal();
 
             for (var i:int = 0; i < indices.length; ++i) {
-                if (t.indices.indexOf(indices[i]) >= 0) {
-                    var p:Vector2 = new Vector2(points[indices[i]].x, points[indices[i]].y);
-                    if (portal.left == null) {
-                        portal.left = p;
-                    }
-                    else {
-                        portal.right = p;
-                    }
+                if (t.indices.indexOf(indices[i]) == -1) {
+                    var i1:int = indices[ ( i + 1 ) % indices.length ];
+                    var i2:int = indices[ ( i + 2 ) % indices.length ];
+
+                    portal.left = new Vector2(points[i1].x, points[i1].y);
+                    portal.right = new Vector2(points[i2].x, points[i2].y);
                 }
             }
 
