@@ -11,17 +11,10 @@ package {
         public function Funnel() {
         }
 
-        public function find(path:Vector.<Triangle>, start:Object, finish:Object):Vector.<Vector2> {
-            var portals:Vector.<Portal> = new Vector.<Portal>();
-
-            for (var i:int = 1; i < path.length; ++i) {
-                var portal:Portal = path[i - 1].getPortal(path[i]);
-                portals.push(portal);
-            }
-
+        public function find(portals:Vector.<Portal>, start:Object, finish:Vector2):Vector.<Vector2> {
             var last:Portal = new Portal();
-            last.left = new Vector2(finish.x, finish.y);
-            last.right = new Vector2(finish.x, finish.y);
+            last.left = finish;
+            last.right = finish;
             portals.push(last);
 
             current = new Vector2(start.x, start.y);
@@ -32,7 +25,6 @@ package {
             road.push(new Vector2(start.x, start.y));
             
             for (var i:int = 1; i < portals.length; ++i) {
-                trace("check funnel ", i);
                 if (insideFunnel(current, portals[i].left)) {
                     left = portals[i].left;
                     leftIndex = i;

@@ -3,6 +3,7 @@ package {
     import flash.display.Sprite;
     import flash.events.MouseEvent;
     import flash.events.Event;
+    import flash.text.*;
 
     public class Dragable extends Sprite {
         
@@ -10,13 +11,16 @@ package {
         private var lastX:int;
         private var lastY:int;
         private var distance:int;
+        public var point:Vector2;
 
-        public function Dragable(stage:Object) {
+        public function Dragable(stage:Object, point:Vector2, index:int = -1) {
+            this.point = point;
             super();
             addEventListener(MouseEvent.MOUSE_DOWN, onStart);
             stage.addEventListener(MouseEvent.MOUSE_MOVE, onMove);
             stage.addEventListener(MouseEvent.MOUSE_UP, onEnd);
             addEventListener(MouseEvent.MOUSE_UP, onSelect);
+
         }
 
 
@@ -32,6 +36,8 @@ package {
             if (selected) {
                 x = e.stageX;
                 y = e.stageY;
+                point.x = x;
+                point.y = y;
                 distance += Math.abs(x - lastX) + Math.abs(y - lastY);
                 lastX = x;
                 lastY = y;

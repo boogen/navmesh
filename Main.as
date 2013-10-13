@@ -8,15 +8,20 @@ package {
 
     public class Main extends Sprite {
 
-        private var points:Vector.<Sprite> = new Vector.<Sprite>();
+        private var points:Vector.<Vector2> = new Vector.<Vector2>();
+        private var pointSprites:Vector.<Sprite> = new Vector.<Sprite>();
         private var triangles:Vector.<Triangle> = new Vector.<Triangle>();
+        private var portals:Vector.<Portal> = new Vector.<Portal>();
+
         private var bottom:Sprite;
         private var current:Vector.<Sprite>;
-        private var start:Sprite;
-        private var finish:Sprite;
-        private var path:Vector.<Triangle>;
+        private var start:Dragable;
+        private var finish:Dragable;
+        private var path:Vector.<Portal>;
         private var road:Vector.<Vector2>;
         private var top:Sprite;
+
+        private var graph:Graph;
 
         public function Main() {
             if (stage) {
@@ -43,7 +48,7 @@ package {
             addChild(top);
 
 
-            start = new Dragable(stage);
+            start = new Dragable(stage, new Vector2(100, 300) );
             start.x = 100;
             start.y = 300;
             start.graphics.beginFill(0x000000);
@@ -52,7 +57,7 @@ package {
             top.addChild(start);
             start.addEventListener("DROPPED", onDropped);
 
-            finish = new Dragable(stage);
+            finish = new Dragable(stage, new Vector2(900, 300));
             finish.x = 900;
             finish.y = 300;
             finish.graphics.beginFill(0x000000);
@@ -60,37 +65,62 @@ package {
             finish.graphics.endFill();
             top.addChild(finish);
             finish.addEventListener("DROPPED", onDropped);
-
-            
         }
 
         private function onDropped(e:Event):void {
+            for each (var t:Triangle in triangles) {
+                t.checkOrientation();
+            }
+            createGraph();
+        }
 
+        private function createGraph():void {
+            var end_index:int = insideTriangle(finish.x, finish.y);
+            if (end_index >= 0) {
+                trace("in triangle", triangles[end_index].indices.join(","));
+
+                var list:Vector.<Triangle> = new Vector.<Triangle>();
+                list.push(triangles[end_index]);
+                graph = new Graph(points);
+                graph.create(list);
+
+            }
+            else {
+                graph = null;
+            }
         }
 
 
         private function onMouseUp(e:MouseEvent):void {
-            addPoint(e.stageX, e.stageY);
+            var index:int = insideTriangle(e.stageX, e.stageY);
+            if (index >= 0) {
+//                addUnit();
+            }
+            else {
+                addPoint(e.stageX, e.stageY);
+            }
         }
 
         private function addPoint(px:Number, py:Number):void {
-            var p:Sprite = new Dragable(stage);
+            var v:Vector2 = new Vector2(px, py);
+            points.push(v);
+
+            var p:Sprite = new Dragable(stage, v, points.length - 1);
             p.x = px;
             p.y = py;
             addChild(p);
             p.addEventListener("SELECTED", onSelect);
-            points.push(p);
+            p.addEventListener("DROPPED", onDropped);
+            pointSprites.push(p);
+
             if (current.length >= 3) {
                 current.shift();
             }
 
             current.push(p);
-
-
-
             addTriangle();
 
-            
+            createGraph();
         }
 
 
@@ -99,21 +129,41 @@ package {
                 var indices:Vector.<int> = new Vector.<int>();
                 
                 for (var i:int = 0; i < current.length; ++i) {
-                    indices.push(points.indexOf(current[i]));
+                    indices.push(pointSprites.indexOf(current[i]));
                 }
 
                 var triangle:Triangle = new Triangle(points, indices);
 
                 for (var i:int = 0; i < triangles.length; ++i) {
                     if (triangle.commonVertices(triangles[i]) == 2) {
-                        triangle.addNeighbor(triangles[i]);
-                        triangles[i].addNeighbor(triangle);
+                        var portal:Portal = createPortal(triangle, triangles[i]);
+                        triangle.addNeighbor(triangles[i], portal);
+                        triangles[i].addNeighbor(triangle, portal);
                     }
                 }
 
                 triangles.push(triangle);
             }
 
+        }
+
+        private function createPortal(t1:Triangle, t2:Triangle):Portal {
+            var portal:Portal = new Portal();
+            portal.triangle1 = t1;
+            portal.triangle2 = t2;
+
+            for (var i:int = 0; i < t1.indices.length; ++i) {
+                if (t2.indices.indexOf(t1.indices[i]) == -1) {
+                    var i1:int = t1.indices[ ( i + 1 ) % t1.indices.length ];
+                    var i2:int = t1.indices[ ( i + 2 ) % t1.indices.length ];
+
+                    portal.left = points[i1];
+                    portal.right = points[i2];
+                }
+            }
+            
+            return portal;
+            
         }
 
         private function onSelect(e:Event):void {
@@ -150,7 +200,6 @@ package {
                     vertices.push(points[i].y);
                 }
 
-
                 bottom.graphics.clear();
 
                 for (var i:int = 0; i < triangles.length; ++i) {
@@ -165,48 +214,56 @@ package {
             }
 
 
-            for (var i:int = 0; i < points.length; ++i) {
+            for (var i:int = 0; i < pointSprites.length; ++i) {
                 var color:uint;
-                var p:Sprite = points[i];
-                if (current.indexOf(p) >= 0) {
+                var sprite:Sprite = pointSprites[i];
+                if (current.indexOf(sprite) >= 0) {
                     color = 0xff0000;
                 }
                 else {
                     color = 0x999999;;
                 }
                 
-                p.graphics.clear();
-                p.graphics.beginFill(color);
-                p.graphics.drawCircle(0, 0, 6);
-                p.graphics.endFill();
+                sprite.graphics.clear();
+                sprite.graphics.beginFill(color);
+                sprite.graphics.drawCircle(0, 0, 8);
+                sprite.graphics.endFill();
 
             }
-
-            var i:int = insideTriangle(start.x, start.y);
-            var j:int = insideTriangle(finish.x, finish.y);
-
-            if (i >= 0 && j >= 0) {
-                path = findPath(triangles[i], triangles[j]);
-                var funnel:Funnel = new Funnel();
-                road = funnel.find(path, start, finish);
-                
-            }
-            else {
-                road = null;
-            }
-
 
             addChild(top);
             top.graphics.clear();
 
-            if (road) {
-                top.graphics.lineStyle(1, 0x000000);
-                top.graphics.moveTo(road[0].x, road[0].y);
-                for (var i:int = 1; i < road.length; ++i) {
-                    top.graphics.lineTo(road[i].x, road[i].y);
+            var start_index:int = insideTriangle(start.x, start.y);
+
+            if (graph != null && start_index >= 0) {
+                var t:Triangle = triangles[start_index];
+                var p:Portal = new Portal();
+                p.left = start.point;
+                p.right = start.point;
+                
+                
+                var min_dist:Number = Number.MAX_VALUE;
+                var min_portal:Portal = null
+                for each (var portal:Portal in t.portals) {
+                    var d:Number = graph.dist(p, portal);
+                    if (d < min_dist) {
+                        min_dist = d;
+                        min_portal = portal;
+                    }
                 }
 
-
+                var path:Vector.<Portal> = graph.findPath(min_portal);
+                var funnel:Funnel = new Funnel();
+                road = funnel.find(path, start.point, finish.point);
+                
+                if (road) {
+                    top.graphics.lineStyle(1, 0x000000);
+                    top.graphics.moveTo(road[0].x, road[0].y);
+                    for (var i:int = 1; i < road.length; ++i) {
+                        top.graphics.lineTo(road[i].x, road[i].y);
+                    }
+                }
             }
         }
 
@@ -220,42 +277,6 @@ package {
             return -1;
             
         }
-
-        private function findPath(from:Triangle, to:Triangle):Vector.<Triangle> {
-            var openlist:Vector.<Triangle> = new Vector.<Triangle>();
-            var visited:Dictionary = new Dictionary();
-            var parent:Dictionary = new Dictionary();
-
-            openlist.push(from);
-            visited[from] = true;
-
-            var result:Vector.<Triangle> = new Vector.<Triangle>();
-
-            while (openlist.length > 0) {
-                var t:Triangle = openlist.shift();
-
-                if (t == to) {
-                    while (t != null) {
-                        result.push(t);
-                        t = parent[t];
-                    }
-                    return result.reverse();
-                }
-
-                for (var i:int = 0; i < t.neighbors.length; ++i) {
-                    var n:Triangle = t.neighbors[i];
-                    if (! (n in visited) ) {
-                        openlist.push(n);
-                        visited[n] = true;
-                        parent[n] = t;
-                    }
-                }
-            }
-
-            return result;
-               
-        }
-
 
 
     }
