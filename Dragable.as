@@ -30,6 +30,7 @@ package {
             lastY = this.y;
             distance = 0;
             e.stopPropagation();
+            dispatchEvent(new Event("PICKED"));
         }
 
         private function onMove(e:MouseEvent):void {

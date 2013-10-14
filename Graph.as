@@ -24,7 +24,7 @@ package {
 
             while (openlist.length > 0) {
                 var t:Triangle = openlist.shift();
-                trace("check triangle ", t.indices.join(","));
+                //trace("check triangle ", t.indices.join(","));
 
                 for each (var triangle:Triangle in t.neighbors) {
                     if (! (triangle in visited) ) {
@@ -48,7 +48,7 @@ package {
                 for each (var p1:Portal in t.portals) {
                     for each (var p2:Portal in t.portals) {
                         if (p1 != p2) {
-                            trace("add neighbor ", p1.print(points), p2.print(points));
+                            //trace("add neighbor ", p1.print(points), p2.print(points));
                             var n1:Node = portalToNode[p1];
                             var n2:Node = portalToNode[p2];
                             n1.addNeighbor(n2);
@@ -65,7 +65,7 @@ package {
         }
 
         public function dijkstra(list:Vector.<Triangle>):void {
-            trace("DIJKSTRA");
+            //trace("DIJKSTRA");
             var cmp:Function = function(lhs:Object, rhs:Object):int { return lhs.distance - rhs.distance; };
             var openlist:BinaryHeap = new BinaryHeap(cmp);
             var visited:Dictionary = new Dictionary();
@@ -87,12 +87,12 @@ package {
 
             while (openlist.size > 0) {
                 var node:Node = openlist.pop() as Node;
-                trace("check ", node.portal.print(points));
+                //trace("check ", node.portal.print(points));
                 visited[node] = true;
                 
-                trace("neighbors count ", node.neighbors.length);
+                //trace("neighbors count ", node.neighbors.length);
                 for each (var neighbor:Node in node.neighbors) {
-                    trace("neighbor", neighbor.portal.print(points));
+                    //trace("neighbor", neighbor.portal.print(points));
                     if (! (neighbor in visited) ) {
                         var d:Number = node.distance + dist(node.portal, neighbor.portal);
                         if (d < neighbor.distance) {
@@ -107,7 +107,7 @@ package {
                             if (common.aligned(neighbor.portal)) {
                                 neighbor.portal.reverse();
                             }
-                            trace("parent of ", neighbor.portal.print(points), " is ", node.portal.print(points));
+                            //trace("parent of ", neighbor.portal.print(points), " is ", node.portal.print(points));
                         }
                     }
                 }

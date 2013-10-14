@@ -15,13 +15,13 @@ package {
 
         private var bottom:Sprite;
         private var current:Vector.<Sprite>;
-        private var start:Dragable;
         private var finish:Dragable;
         private var path:Vector.<Portal>;
         private var road:Vector.<Vector2>;
         private var top:Sprite;
 
         private var graph:Graph;
+        private var units:Vector.<Unit> = new Vector.<Unit>();
 
         public function Main() {
             if (stage) {
@@ -47,16 +47,6 @@ package {
             top = new Sprite();
             addChild(top);
 
-
-            start = new Dragable(stage, new Vector2(100, 300) );
-            start.x = 100;
-            start.y = 300;
-            start.graphics.beginFill(0x000000);
-            start.graphics.drawCircle(0, 0, 10);
-            start.graphics.endFill();
-            top.addChild(start);
-            start.addEventListener("DROPPED", onDropped);
-
             finish = new Dragable(stage, new Vector2(900, 300));
             finish.x = 900;
             finish.y = 300;
@@ -64,7 +54,12 @@ package {
             finish.graphics.drawCircle(0, 0, 10);
             finish.graphics.endFill();
             top.addChild(finish);
+            finish.addEventListener("PICKED", onPicked);
             finish.addEventListener("DROPPED", onDropped);
+        }
+
+        private function onPicked(e:Event):void {
+            graph = null;
         }
 
         private function onDropped(e:Event):void {
@@ -94,11 +89,24 @@ package {
         private function onMouseUp(e:MouseEvent):void {
             var index:int = insideTriangle(e.stageX, e.stageY);
             if (index >= 0) {
-//                addUnit();
+                var unit:Unit = addUnit(e.stageX, e.stageY);
+                unit.setTriangle(triangles[index]);
             }
             else {
                 addPoint(e.stageX, e.stageY);
             }
+        }
+
+        private function addUnit(px:Number, py:Number):Unit {
+            var unit:Unit = new Unit();
+            unit.x = px;
+            unit.y = py;
+            unit.here.x = px;
+            unit.here.y = py;
+            units.push(unit);
+            addChild(unit);
+            
+            return unit;
         }
 
         private function addPoint(px:Number, py:Number):void {
@@ -234,35 +242,45 @@ package {
             addChild(top);
             top.graphics.clear();
 
-            var start_index:int = insideTriangle(start.x, start.y);
+            for each (var unit:Unit in units) {
+                unit.graphics.clear();
+                unit.graphics.beginFill(0x00aa00);
+                unit.graphics.drawCircle(0, 0, 4);
+                unit.graphics.endFill();
 
-            if (graph != null && start_index >= 0) {
-                var t:Triangle = triangles[start_index];
-                var p:Portal = new Portal();
-                p.left = start.point;
-                p.right = start.point;
-                
-                
-                var min_dist:Number = Number.MAX_VALUE;
-                var min_portal:Portal = null
-                for each (var portal:Portal in t.portals) {
-                    var d:Number = graph.dist(p, portal);
-                    if (d < min_dist) {
-                        min_dist = d;
-                        min_portal = portal;
+            }
+
+
+
+            var end_index:int = insideTriangle(finish.x, finish.y);
+            if (graph != null && end_index >= 0) {
+
+                for each (var t:Triangle in triangles) {
+                    if (t in Unit.partition) {
+                        var droids:Vector.<Unit> = Unit.partition[t];
+                        for each (var unit:Unit in droids) {
+                            var force:Vector2 = new Vector2(0, 0);
+                            for each (var u:Unit in droids) {
+                                var f:Vector2 = unit.here.sub(u.here);
+                                var len:Number = f.len();
+                                if (len > 0 && len < 25) {
+                                    var nrm:Vector2 = f.mul( 1 / len);
+                                    f = f.mul(1 / 25);
+                                    f = nrm.sub(f);
+                                    force = force.add(f);
+                                }
+                            }
+                            
+                            force = force.mul( 0.001);
+                            unit.force = unit.force.add(force);
+                        }
                     }
                 }
 
-                var path:Vector.<Portal> = graph.findPath(min_portal);
-                var funnel:Funnel = new Funnel();
-                road = funnel.find(path, start.point, finish.point);
-                
-                if (road) {
-                    top.graphics.lineStyle(1, 0x000000);
-                    top.graphics.moveTo(road[0].x, road[0].y);
-                    for (var i:int = 1; i < road.length; ++i) {
-                        top.graphics.lineTo(road[i].x, road[i].y);
-                    }
+
+                var target:Triangle = triangles[end_index];
+                for each (var unit:Unit in units) {
+                    unit.tick(target, graph, finish.point);
                 }
             }
         }
